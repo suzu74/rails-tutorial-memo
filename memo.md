@@ -99,11 +99,25 @@
 
 * 読了
 
-######　1.4.3 Bitbucket
+###### 1.4.3 Bitbucket
 
-* Gitnubで行うので軽く目を通すのみ。
-* Githubにてpush完了
+* GitHubで行うので軽く目を通すのみ。
+* GitHubにてpush完了
 
-######　1.4.4 ブランチ、編集、コミット、マージ
+###### 1.4.4 ブランチ、編集、コミット、マージ
+
+* チュートリアルでは出てきたgit commandは業務で毎日使うコマンドが多く困ることはなかった。
+    * しかし git branch -D　と　git branch -dなどの違いがわからない。(ここら辺は都度調べれば良さそう)
+        * 個人的に一番いまだにわからないのが、fast-forwardとnon-fast-forward。調べたりしているがいまいち理解ができず苦手。
+        * cherry-pickやrevertも好きではない、、、。
+
+####　1.5 デプロイする
+
+* Phusion Passenger???
+* 一通りのデプロイ環境を提供するEngine YardやRails Machine???
+* クラウドサービスを提供するEngine Yard CloudやHeroku??
+    * Heroku以外馴染みのない言葉が多かった。
+
+##### 1.5.1 Herokuのセットアップ
 
 * 
