@@ -511,6 +511,51 @@
 
 ##### 4.3.3 ハッシュとシンボル
 
-* 
+* インデックスとして整数値以外のものも使える点が配列と異なる
 
+* ハッシュは配列と似ている。
+    * 1つの重要な違いとして、ハッシュでは要素の「並び順」が保証されないという点
+
+* シンボルは、Ruby以外ではごく一部の言語にしか採用されていない特殊なデータ形式
+    * Rubyからメインにプログラミングに触れたので。シンボルに対しては馴染みがあったつもりだが、シンボルは多くの言語では採用されていないとは、、、
+
+* ハッシュの中のハッシュ
+    * ちょっと苦手かも、、、配列の配列はわかっているし、それと基本的な考え方は同じ、、、だと思う。
+
+```
+ params = {}        # 'params' というハッシュを定義する ('parameters' の略)。
+=> {}
+ params[:user] = { name: "Michael", email: "michel@example.com" }
+=> {:name=>"Michael", :email=>"michel@example.com"}
+ params
+=> {:user=>{:name=>"Michael", :email=>"michel@example.com"}}
+ params[:user][:email]
+=> "mhartl@example.com"
+```
+
+* ハッシュもeachメソッドを使える。
+    * ブロックの変数はキーと値の2つになる。
+
+##### 4.3.4 CSS、再び
+
+* 以下のコードについて読む。
+
+```
+stylesheet_link_tag 'application', media: 'all',
+                                   'data-turbolinks-track': 'reload'
+```
+
+* そもそも意識はしてなかったが、`stylesheet_link_tag`はメソッド
+    * 以前教わった、`validates`もメソッド。
+* 上記のstylesheet_link_tagメソッドには2つの引数がある。
+    * 最初の引数である文字列は、スタイルシートへのパスを示している。
+        * 次の引数であるハッシュには2つの要素があり、最初の要素はメディアタイプを示し、
+            次の要素はRails 4.0で追加されたturbolinksという機能をオンにしている。
+
+* ハッシュがメソッド呼び出しの最後の引数である場合は、波カッコを省略できる
+
+```
+stylesheet_link_tag 'application', { media: 'all',
+                                     'data-turbolinks-track': 'reload' }
+```
 
