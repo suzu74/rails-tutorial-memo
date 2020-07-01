@@ -559,3 +559,76 @@ stylesheet_link_tag 'application', { media: 'all',
                                      'data-turbolinks-track': 'reload' }
 ```
 
+## 20200701
+
+#### 4.3 他のデータ構造
+
+* 改めてのメモ
+    * Rubyではあらゆるものがオブジェクト
+        * メソッドをまとめるのにクラス
+        * 多くのオブジェクト指向言語と同じく、クラスからインスタンスが生成されることでオブジェクトが作成
+        * メソッドをまとめるのにクラス
+
+##### 4.4.1 コンストラクタ
+
+* クラス名に対してnewメソッドを呼び出すことを名前付きコンストラクタという
+    * ex) `s = String.new("foobar") `
+
+* Hash.new はハッシュのデフォルト値を引数に取ります。(キーが存在しない場合のデフォルト値)
+    * 今まで考えもしなかった新しい発見だった。
+
+```
+h = Hash.new
+=> {}
+h[:foo]            # 存在しないキー (:foo) の値にアクセスしてみる
+=> nil
+h = Hash.new(0)    # 存在しないキーのデフォルト値をnilから0にする
+=> {}
+h[:foo]
+=> 0
+```
+
+##### 4.4.2 クラス継承
+
+* クラスの階層について
+    * ex)  String < Object < BasicObject
+
+* Rubyにおけるすべてのクラスは最終的にスーパークラスを持たないBasicObjectクラスを継承
+     * Rubyではあらゆるものがオブジェクトである"ということの技術的な意味
+
+* selfがよくわからなくなることがある。
+    * 色々な場面で出てくるselfが何を指しているのか曖昧になる時がある。
+
+```
+class Word < String             # WordクラスはStringクラスを継承する
+# 文字列が回文であればtrueを返す
+   def palindrome?
+    self == self.reverse        # selfは文字列自身を表します
+   end
+end
+```
+
+##### 4.4.3 組み込みクラスの変更
+
+* Rubyでは組み込みの基本クラスの拡張が可能
+    * 既存のクラスに対して新しいメソッドの追加やオーバーライドができる。
+
+* blank?もRailsがRubyに追加した具体例の一つ
+
+##### 4.4.4 コントローラクラス
+
+* Railsのコントローラーも同じように階層的に継承がある。
+    * StaticPagesController < ApplicationController < ActionController::Base 
+                   < ActionController::Metal < AbstractController::Base < Object
+                   
+* 重要な点 
+    * Railsのアクションには戻り値がない。（返される値は重要ではない）
+        * home アクションはWebページを表示するためのものであり、値を返すためのものではなかった。
+            * そして、第3章では一度もStaticPagesController.newを実行しませんでした。しかし上手く動いている。
+                * RailsはRubyで書かれているが、既にRubyとは別物。Railsのクラスは、普通のRubyオブジェクトと同様に振る舞うものもありますが、多くのクラスにはRailsの魔法が振りかけられている。
+                    そのためRailsはRubyとは切り離して学習する必要があります。
+
+* 言われてみると、確かに〇〇.newとかしてなかった。
+
+##### 4.4.5 ユーザークラス
+
