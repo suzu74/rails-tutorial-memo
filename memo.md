@@ -630,5 +630,27 @@ end
 
 * 言われてみると、確かに〇〇.newとかしてなかった。
 
+## 20200702
+
 ##### 4.4.5 ユーザークラス
 
+```
+class User
+  attr_accessor :name, :email
+
+  def initialize(attributes = {}) # ← ここの書き方に慣れない   initialize(name, email) ← こっちば馴染みある
+    @name  = attributes[:name]                                  @name = name
+    @email = attributes[:email]                                 @email = email
+  end     
+
+  def formatted_email
+    "#{@name} <#{@email}>"
+  end
+end
+```
+
+* initialize(attributes = {})の書き方に馴染みがないと感じた。
+    * initialize(name, email) の方の書き方なら理解は出来ていると思っている。。
+
+* マスアサインメント (mass assignment) と呼ばれる技法
+    * 名前に馴染みなかった。。。
