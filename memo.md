@@ -996,3 +996,65 @@ user.errors.full_messages
 
 * 正規表現は苦手で本当の最小限のみで終えていた
     * grepなどでも正規表現は便利なので、覚えていく必要あり。
+
+##### 6.2.5 一意性を検証する
+
+* 一意性を保つためのメソッドがvalidatesのuniqueオプション
+
+* 今回の一意性を確認するテストは少し今までとやり方が異なる。
+    * 一意性のテストのためには実際にデータベースにレコードを登録する必要あり
+
+```
+test "email addresses should be unique" do
+  duplicate_user = @user.dup  # userの複製
+  @user.save 1つ目のuserをデータベースへ登録
+  assert_not duplicate_user.valid? 上記で同じ値をもつデータが登録されているので、ここの検証でダメとなる
+end
+```
+
+* ちなみにメールアドレスは大文字小文字を区別しない
+    * つまり、、、foo@bar.comはFOO@BAR.COMやFoO@BAr.coMと書いても扱いは同じ
+        * なので、メールアドレスの検証ではこのような場合も考慮する必要がある
+            * : { case_sensitive: false }のオプションをつける
+                * 実際にこういった実装をする時につい抜けてしまいそう、、、。
+
+```
+test "email addresses should be unique" do
+  duplicate_user = @user.dup
+  duplicate_user.email = @user.email.upcase
+  @user.save
+  assert_not duplicate_user.valid?
+end
+```
+
+* ここで問題がある
+    * Active Recordはデータベースのレベルでは一意性を保証していないという問題
+        * 仮に登録の際に、素早く連続でクリックされると同じ内容で登録できてしまうケースが発生する
+            * 解決するためにはデータベースレベルでも一意性を強制する
+                * 具体的にはそのカラムにインデックスを追加する
+                    * インデックスには本でいう索引のようなもので検索を効率的に行なってくれる
+
+*  rails generate migration でマイグレーションファイルを直接作成
+    * インデックス自体は一意性を強制しない
+        * オプションでunique: trueを指定することで強制
+
+```
+class AddIndexToUsersEmail < ActiveRecord::Migration[5.1]
+  def change
+    add_index :users, :email, unique: true
+  end
+end
+```
+
+* fixturesとはテストDB用のサンプルデータが含まれている場所
+
+* 今回のアプリではFoo@ExAMPle.Comとfoo@example.comが同一であると解釈されるべき
+    * しかしデータベース上では、別々のものと解釈されてしまう
+        * なので、データベースへ保存される直前にすべての文字列を小文字に変換することで対応
+            * そこでコールバックの出番
+                * 正直、before_actiongぐらいしか使って来なかった
+
+* ` before_save { self.email = email.downcase }`
+    * ここでもselfが、、、
+        * このselfはユーザーである
+            * 右辺のselfは省略可能
