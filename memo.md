@@ -1058,3 +1058,97 @@ end
     * ここでもselfが、、、
         * このselfはユーザーである
             * 右辺のselfは省略可能
+
+## 20200705
+
+#### 6.3 セキュアなパスワードを追加する
+
+* 安全なパスワードを作成するために、ユーザが入力したデータをそのままではなく、ハッシュ化してDBに保存する
+    * Rubyのハッシュ化とは別物
+
+* ユーザーの認証は、、、、 
+    * パスワードの送信、ハッシュ化、データベース内のハッシュ化された値との比較という流れ
+        * ハッシュ化されたパスワード同士を比較していることがポイント
+
+##### 6.3.1 ハッシュ化されたパスワード
+
+* `has_secure_password`というRailsのメソッドを呼び出すだけで完了
+    * このメソッドを追加すると、、、
+        * データベース内のpassword_digestという属性に保存できる
+        * 2つのペアの仮想的な属性 (passwordとpassword_confirmation) が使えるようになる
+            * 存在性と値が一致するかどうかのバリデーションも追加される
+        * authenticateメソッドが使えるようになる (引数の文字列がパスワードと一致するとUserオブジェクトを、間違っているとfalseを返すメソッド)
+    * has_secure_password機能を使うためには条件がある
+        * モデル内にpassword_digestという属性が含まれていること
+        * 最先端のハッシュ関数であるbcryptが必要
+
+* カラム追加用のマイグレーション
+    * rails generate migration add_password_digest_to_users password_digest:string
+        * 末尾にto_usersをつけることでusersテーブルにカラムを追加するマイグレーションファイルをRailsが自動的に作成してくれる
+
+##### 6.3.2 ユーザーがセキュアなパスワードを持っている
+
+* 演習
+
+    * userオブジェクトに有効な名前とメールアドレスを与えても、valid?で失敗してしまう際のエラーメッセージ
+
+```
+u.errors.full_messages
+=> ["Password can't be blank"]
+```
+
+##### 6.3.3 パスワードの最小文字数
+
+* has_secure_passwordメソッドは存在性のバリデーションもしてくれる
+    * しかし新しくレコードが追加されたときだけに適用される
+        * ユーザーが ' ' (6文字分の空白スペース) といった文字列をパスワード欄に入力して更新しようとすると、バリデーションが適用されずに更新されてしまう
+
+* 演習
+
+    * passwordが短い場合のメッセージ
+
+```
+u.errors.full_messages
+=> ["Password is too short (minimum is 6 characters)"]
+```
+
+##### 6.3.4 ユーザーの作成と認証
+
+* コンソールで実際に手動でユーザーを作成する
+
+* 実際に作ったユーザーが￥でpassowrd_digestやauthenticateを使ってみる
+    * 間違ったパスワードを渡すとfalse
+    * 正しいパスワードを渡すとユーザーオブジェクトを返すようになる
+
+```
+user = User.find_by(email: "mhartl@example.com")
+ User Load (0.2ms)  SELECT  "users".* FROM "users" WHERE "users"."email" = ? LIMIT ?  [["email", "mhartl@example.com"], ["LIMIT", 1]]
+
+user.password_digest
+=> "$2a$12$X0z1i2xymGNRV/B81E7vFej33s/QXPlWOna4dI0dcczUmSjfXKeHi"
+
+user.authenticate("foobaz")
+=>false
+
+user.authenticate("foobar")
+=> #<User id: 1, name: "Michael Hartl", email: "mhartl@example.com", created_at: "2020-07-04 21:44:40", updated_at: "2020-07-04 21:44:40", password_digest: "$2a$12$X0z1i2xymGNRV/B81E7vFej33s/QXPlWOna4dI0dccz...">
+```
+
+#### 6.4 最後に
+
+* git push済み
+
+##### 6.4.1 本章のまとめ
+
+* 本章を通じて苦手だと感じた箇所
+    * 細かいマイグレーションの使い方
+        * 実際の現場では、rails db:migrateしたらrollbackもできることを確認するなどの細かい部分の理解が浅い
+        * マイグレーションファイルを実際にあまり自分でカスタマイズしたことがないので、Railsガイドを見ながらやる必要あり
+    * 正規表現
+        * 本当の基礎しかわかっていない
+            * Rails以外でも役立つのでもう少し理解を深める
+    * DBに対する知見
+        * ex) インデックスを追加することで検索効率が向上するなど
+    * Active::Recordのメソッドの細かい違い
+        * ex) findとfind_byの使い分けなど、、、、(nilか例外が変えるかは理解している)
+        * ex2) update_attributesとupdate_attributeなど（ここに関しては今回学んだ）
