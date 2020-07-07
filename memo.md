@@ -1429,6 +1429,58 @@ end
 * 演習
     * rails routes | grep sessionsを使えばsessionsの名前つきルートを調べられる
 
+## 20200707
+
 ##### 8.1.2 ログインフォーム
 
+* ログインフォームとユーザー登録フォームにはほとんど同じ
+    * 違いは、4つあったフィールドがEmailとPasswordの2つに減っていることだけ
 
+* 今まではエラーメッセージを出力する場合、Active Recordによって自動生成されるメッセージを使っていた
+    * しかし今回はActive Recordを継承しているわけでない
+        * つまり自分でエラーメッセージを作成する必要あり
+
+* セッションフォームとユーザー登録フォームの最大の違い
+     * セッションにはSessionモデルがない
+     * @userのようなインスタンス変数に相当するものがない
+        * セッションの場合はリソースの名前とそれに対応するURLを具体的に指定する必要がある
+
+```
+前回の@userのケース
+form_for(@user)
+
+今回のケース
+form_for(:session, url: login_path)
+```
+
+* 上記の結果、paramsハッシュに入る値が、メールアドレスとパスワードのフィールドにそれぞれ対応したparams[:session][:email]とparams[:session][:password]になる
+
+```
+実際にparamsの値を確認
+"session"=>{"email"=>"hoge@example.com", "password"=>"hogehoge"}, "commit"=>"Log in", "controller"=>"sessions", "action"=>"create"}
+```
+
+##### 8.1.3 ユーザーの検索と認証
+
+* formから送られてくるparamsの中身は`{ session: { password: "foobar", email: "user@example.com" } }`
+    * つまり`params[:session][:email]`のようにデータにアクセスできる
+         * 以下のように実装する
+
+```
+まずはメールアドレスからユーザー情報を持ってくる
+そして、そのユーザーのパスワードが正しいかをauthenticateメソッドを用いて検索している
+user = User.find_by(email: params[:session][:email].downcase) # find_byはid以外のユニークは値で検索できる
+user && user.authenticate(params[:session][:password])
+```
+
+##### 8.1.4 フラッシュメッセージを表示する
+
+* sessionはuserと違いActive Recordを継承していない
+    * そのためログインに失敗したときには代わりにフラッシュメッセージを表示する
+
+```
+#現在の状態は正しくない
+#renderとredirect_toは違うためである。.nowを追加で解決する
+flash[:danger] = 'Invalid email/password combination' 
+render 'new'
+```
