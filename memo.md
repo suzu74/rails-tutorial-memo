@@ -1875,3 +1875,22 @@ BCrypt::Password.new(remember_digest).is_password?(remember_token)
     * sessionとcookieの違いについても曖昧
     * このレベルのテストを書くのは難しそうだと感じた
     * ログインとなると、gemをイメージするがここで自分で0から実装することも大切なので要復習
+
+## 20200721
+
+#### ８章 改めてのメモ
+
+* 今までは`form_for(@user)`としていたが、今回はUserモデルがない為に、`form_for(:session, url: login_path)`としている
+    * `:session`としていすることにより `params[:session][:email]`や`params[:session][:password]`のように値を参照できるようになるため。
+
+* `current_user`メソッドなどは読めば理解はできていると思うが、実際にパパッと書けるかは別問題
+
+* 8.2.4 レイアウトの変更をテストのパートの以下がイマイチ理解できない
+
+```
+def User.digest(string)
+    cost = ActiveModel::SecurePassword.min_cost ? BCrypt::Engine::MIN_COST :
+                                                  BCrypt::Engine.cost
+    BCrypt::Password.create(string, cost: cost)
+  end
+```
