@@ -1975,3 +1975,113 @@ end
         * store_locationとredirect_back_orの2つのメソッドを使って実現
             * 転送先のURLを保存する仕組みは、8.2.1でユーザーをログインさせたときと同じで、sessionを使用
             * また、requestオブジェクトも使用（request.original_urlでリクエスト先が取得できる）
+        * store_locationメソッドでは、 リクエストが送られたURLをsession変数の:forwarding_urlキーに保存
+        * フォワーディング自体を実装するには、redirect_back_orメソッドを使う
+
+## 20200724
+
+#### 10.3 すべてのユーザーを表示する
+
+* 読了
+
+##### 10.3.1 ユーザーの一覧ページ
+
+* indexページはログインしたユーザーにしか見せないにする
+
+##### 10.3.2 サンプルのユーザー
+
+* ユーザー数を一気に増やすためにFaker gemを追加
+    * seed.rbに記入
+
+##### 10.3.3 ページネーション
+
+* 現状だと１ページに大量のユーザーが表示されている問題があるのでそれを解消
+    * will_paginate gem とbootstrap-will_paginate gemを追加
+        * 細かい使いかたは割愛
+
+##### 10.3.4 ユーザー一覧のテスト
+
+* 完了
+
+##### 10.3.5 パーシャルのリファクタリング
+
+* 下記のようにリファクタリングできる
+    * `render @users`でいい感じにRailsが展開してくれるがこのような便利な機能をうまく理解できない、、、
+
+```
+<ul class="users">
+  <% @users.each do |user| %>
+    <li>
+      <%= gravatar_for user, size: 50 %>
+      <%= link_to user.name, user %>
+    </li>
+  <% end %>
+</ul>
+
+<ul class="users">
+  <%= render @users %>
+</ul>
+
+# 以下はパーシャル
+<li>
+  <%= gravatar_for user, size: 50 %>
+  <%= link_to user.name, user %>
+</li>
+```
+
+#### 10.4 ユーザーを削除する
+
+* destroyの実装
+    * ただし、今回はadmin権限があるユーザーのみがdestroyできるようにする
+
+##### 10.4.1 管理ユーザー
+
+* 論理値をとるadmin属性をUserモデルに追加する
+    * admin?メソッドも使えるようになっている
+
+##### 10.4.2 destroyアクション
+
+* 管理者だけに削除のリンクが表示されるようにする
+    * そのさい、管理者自身の削除リンクは表示されないようにする
+        * また、loginしている状態出ないといけないので、before_actionにも追加しておく
+
+```
+<% if current_user.admin? && !current_user?(user) %>
+    | <%= link_to "delete", user, method: :delete,
+                                data: { confirm: "You sure?" } %>
+<% end %>
+```
+
+* 今のままだと問題がある
+    * コマンドラインでDELETEリクエストを直接発行するという方法でサイトの全ユーザーを削除してしまうことができる
+        * destroyアクションにもアクセス制御を行う
+
+```
+# 管理者かどうか確認
+def admin_user
+    redirect_to(root_url) unless current_user.admin?
+end
+```
+
+###### 10.4.3 ユーザー削除のテスト
+
+* 完了
+
+#### 10.5 最後に
+
+* push済み
+
+##### 10.5.1 本章のまとめ
+
+* beforeフィルターを使って、認可 (アクセス制御) を実現
+* フレンドリーフォワーディングとは、ログイン成功時に元々行きたかったページに転送させる機能
+* render @usersを実行すると、自動的に_user.html.erbパーシャルを参照し、各ユーザー表示する
+    * ここの仕組みをイマイチ理解できてない
+* boolean型のadmin属性をUserモデルに追加すると、admin?という論理オブジェクトを返すメソッドが自動的に追加される
+    * ここは意外に知らなかったかも？
+
+* この章で理解がイマイチと感じた箇所
+    * before_actionの追加について
+        * 「どのユーザーは◯◯できる」みたいな設計レベル？の話しが苦手かも
+    * フレンドリーフォワーディングについて
+    * （意識してなかっただけだが）boolean型をモデルに追加すると論理オブジェクトを返すメソッドが自動的に追加されること
