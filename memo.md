@@ -2510,3 +2510,180 @@ end
         * 別途Ruby本でも確認する
     * dependent: :destroyオプションなどの役割はわかっているが、一から全て自分が作る時にそこまで頭が回らない可能性がある
     * fixtureの使いこなし
+
+
+### 第14章 ユーザーをフォローする
+
+* 他のユーザーをフォロー (およびフォロー解除) できる機能を追加
+* フォローしているユーザーの投稿をステータスフィードに表示する機能を追加
+* Ajaxについても触れる
+    * ここはしっかり学んでいきたい
+
+#### 14.1 Relationshipモデル
+
+* フォローする機能を実装するためにはデータモデルが必要
+    * 簡単に思いつくのは、has_many (1対多) の関連付けを用いる方法
+        * しかし簡単にはいかない
+            * そのため has_many_throughを使う
+
+##### 14.1.1 データモデルの問題 (および解決策)
+
+* あるユーザーをフォローしているすべてのユーザーの集合はfollowersとなり、user.followersはそれらのユーザーの配列を表すことになる
+    * しかし、この名前付けは逆向きではうまくいかない
+        * あるユーザーがフォローしているすべてのユーザーの集合は、このままではfollowedsとなってしまい、英語の文法からも外れてよくない
+            * そこで、Twitterの慣習にならい、本チュートリアルではfollowingという呼称を採用する
+
+* followingテーブルと has_many関連付けを使って、フォローしているユーザーのモデリングを行う
+    * followingテーブルのそれぞれの行は、followed_idで識別可能
+        * それぞれの行はユーザーなので、これらのユーザーに名前やパスワードなどの属性も追加
+
+* 掲載されている図はm問題がある
+    * 各行には、フォローしているユーザーのid、名前やメールアドレスまであるため無駄が多い
+        * usersテーブルにあるものばかり
+            * さらに、、、followersの方をモデリングすると同じような無駄の多いテーブルをさらに作成する必要がある
+                * 保守性も悪
+                    * なぜならユーザー名を変更するたびに、usersテーブルのそのレコードだけでなく、followingテーブルとfollowersテーブルの両方について、そのユーザーを含むすべての行を更新する必要が出てくるため
+
+* 上記の問題の根本は、必要な抽象化を行なっていないことにある
+    * 正しいモデルを見つけ出す方法の1つは、Webアプリケーションにおけるfollowingの動作をどのように実装するかをじっくり考えること
+        * この場合アプリケーションによって作成または削除されるのは、2人のユーザーの「関係 (リレーションシップ)」
+            * 1人のユーザーは1対多の関係を持つことができ、さらにユーザーはリレーションシップを経由して多くのfollowing (またはfollowers) と関係を持つことができる
+
+* 他の解決しなくてはいけない問題
+    * Facebookのような友好関係 (Friendships) では本質的に左右対称のデータモデルが成立
+        * Twitterのようなフォロー関係では左右非対称の性質がありえる
+            * フォローしている人からフォローされている訳ではない（左右非対称）
+                * それぞれを能動的関係 (Active Relationship)と受動的関係 (Passive Relationship)と呼ぶ
+                    * ここら辺の設計の話しは難しい、、、というか思いつかなそう
+
+* まずは能動的関係に焦点を当てる
+    * フォローしているユーザーはfollowed_idがあれば識別することができる
+        * followed_idを通して、usersテーブルのフォローされているユーザーを見つける
+
+* 能動的関係も受動的関係も、最終的にはデータベースの同じテーブルを使う
+
+* Relationship tableについて
+    * 複合キーインデックス
+        * follower_idとfollowed_idの組み合わせが必ずユニークであることを保証する
+            * これにより、あるユーザーが同じユーザーを2回以上フォローすることを防ぐ
+                * 自身で何か作る場合でもこの設計レベルまでわかるようになりたい
+
+```
+class CreateRelationships < ActiveRecord::Migration[5.1]
+  def change
+    create_table :relationships do |t|
+      t.integer :follower_id
+      t.integer :followed_id
+
+      t.timestamps
+    end
+    add_index :relationships, :follower_id
+    add_index :relationships, :followed_id
+    add_index :relationships, [:follower_id, :followed_id], unique: true
+  end
+end
+```
+
+##### 14.1.2 User/Relationshipの関連付け
+
+* UserとRelationshipの関連付け
+    * 1人のユーザーにはhas_many (1対多) のリレーションシップ
+    * リレーションシップは2人のユーザーの間の関係なので、フォローしているユーザーとフォロワーの両方
+        * `user.active_relationships.build(followed_id: ...)`を実現したい
+            * しかしMicropostの時と大きく違う点がある、、、
+                * ActiveRelationshipモデルはない
+                * followerというクラス名は存在しない
+                    * 上記の問題を解決するためには自分で以下のように必要な箇所を指定する
+                        * その結果多くのメソッドを使えるようになる
+
+
+```
+has_many :active_relationships, class_name:  "Relationship",
+                                  foreign_key: "follower_id",
+                                  dependent:   :destroy
+```
+
+```
+class Relationship < ApplicationRecord
+  belongs_to :follower, class_name: "User"
+  belongs_to :followed, class_name: "User"
+end
+```
+
+##### 14.1.3 Relationshipのバリデーション
+
+* 完了
+
+##### 14.1.4 フォローしているユーザー
+
+* Relationshipの関連付けの核心、followingとfollowersを実装
+    * has_many throughを使う
+        * 1人のユーザーにはいくつもの「フォローする」「フォローされる」といった関係性がある(「多対多」と呼ぶ)
+
+##### 14.1.5 フォロワー
+
+* user.followersメソッドを追加
+    * これは上のuser.followingメソッドと対のもの
+
+* 全体的に複雑になってきたのでしっり復習する
+
+#### 14.2 [Follow] のWebインターフェイス
+
+* フォロー/フォロー解除の基本的なインターフェイスを実装する
+
+##### 14.2.1 フォローのサンプルデータ
+
+* rails db:seedを使ってサンプルデータを作成
+    * しっかり中身を理解する
+
+```
+users = User.all
+user  = users.first
+following = users[2..50]
+followers = users[3..40]
+following.each { |followed| user.follow(followed) }
+followers.each { |follower| follower.follow(user) }
+```
+
+##### 14.2.2 統計と [Follow] フォーム
+
+* プロフィールページとHomeページを実装してデータを反映させる
+    * 現在のユーザーがフォローしている人数と、現在のフォロワーの人数が表示させる
+
+* routesにmemberメソッドを使う
+    * この場合のURLは /users/1/following や /users/1/followers のようになる
+        * 逆にcollectionの場合はidを指定しない
+
+* フォローのform
+    * 2つのフォームの主な違い
+        * 上は新規でリレーションを作るのに対して、下のは既存のリレーションを探す
+            * フォームはfollowed_idをコントローラに送信する必要があるので、上ではhidden_field_tagメソッドを使い
+                * 今一度、hidden_field_tagをしっかり確認する
+
+```
+<%= form_for(current_user.active_relationships.build) do |f| %>
+  <div><%= hidden_field_tag :followed_id, @user.id %></div>
+  <%= f.submit "Follow", class: "btn btn-primary" %>
+<% end %>
+
+<%= form_for(current_user.active_relationships.find_by(followed_id: @user.id),
+             html: { method: :delete }) do |f| %>
+  <%= f.submit "Unfollow", class: "btn" %>
+<% end %>
+```
+
+##### 14.2.3 [Following] と [Followers] ページ
+
+* フォローしているユーザーを表示するページと、フォロワーを表示するページを作成
+    * いずれもプロフィールページとユーザー一覧ページを合わせたような作りになる
+    
+* 今回、followingとfollowersでは明示的にshow_followという同じビューを出力
+    * 1つのviewファイルで十分であるため
+
+* 正しい数が表示されているかどうかと、正しいURLが表示されているかどうかの２つのテスト
+    * HTML構造を網羅的にチェックするテストは壊れやすく、生産性を逆に落としかねないため網羅的にテストをしない
+
+##### 14.2.4 [Follow] ボタン (基本編)
+
+* [Follow] / [Unfollow] ボタンを動作させる実装
+    * Relationshipsコントローラが必要
